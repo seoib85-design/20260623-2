@@ -2,19 +2,26 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#302b63">
   <title>테트리스</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
       background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
       font-family: 'Segoe UI', system-ui, sans-serif;
       color: #eee;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      overflow-x: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .game-wrapper {
@@ -22,6 +29,8 @@
       gap: 24px;
       align-items: flex-start;
       padding: 24px;
+      width: 100%;
+      max-width: 720px;
     }
 
     .panel {
@@ -30,6 +39,11 @@
       border-radius: 12px;
       padding: 20px;
       backdrop-filter: blur(8px);
+    }
+
+    .main-panel {
+      flex: 1;
+      min-width: 0;
     }
 
     h1 {
@@ -46,8 +60,16 @@
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     }
 
+    #board {
+      width: 100%;
+      max-width: 300px;
+      height: auto;
+      margin: 0 auto;
+    }
+
     .sidebar {
       width: 180px;
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -71,6 +93,8 @@
     #next-canvas {
       background: rgba(0, 0, 0, 0.3);
       box-shadow: none;
+      display: block;
+      margin: 0 auto;
     }
 
     .controls {
@@ -100,10 +124,13 @@
       font-weight: 600;
       cursor: pointer;
       transition: transform 0.15s, opacity 0.15s;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     button:hover { transform: translateY(-1px); opacity: 0.9; }
-    button:active { transform: translateY(0); }
+    button:active { transform: scale(0.96); opacity: 0.85; }
 
     .overlay {
       position: absolute;
@@ -134,14 +161,114 @@
       margin-bottom: 16px;
     }
 
+    .overlay button {
+      width: auto;
+      min-width: 140px;
+      padding: 12px 24px;
+    }
+
     .canvas-container {
       position: relative;
+      width: fit-content;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .touch-controls {
+      display: none;
+      margin-top: 16px;
+      gap: 10px;
+    }
+
+    .touch-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .touch-btn {
+      flex: 1;
+      max-width: 72px;
+      min-height: 56px;
+      padding: 10px 6px;
+      font-size: 1.4rem;
+      line-height: 1;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+    }
+
+    .touch-btn.wide {
+      max-width: none;
+      flex: 2;
+      font-size: 0.95rem;
+    }
+
+    .touch-btn.primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-color: transparent;
+    }
+
+    @media (max-width: 680px) {
+      body {
+        align-items: flex-start;
+      }
+
+      .game-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+        gap: 12px;
+        max-width: 100%;
+      }
+
+      h1 {
+        font-size: 1.3rem;
+        margin-bottom: 10px;
+      }
+
+      .main-panel {
+        padding: 14px;
+      }
+
+      .sidebar {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+      }
+
+      .sidebar .stat {
+        padding: 12px;
+      }
+
+      .sidebar .stat span {
+        font-size: 1.2rem;
+      }
+
+      .next-panel {
+        grid-column: 1 / -1;
+        padding: 12px;
+      }
+
+      .keyboard-hint {
+        display: none;
+      }
+
+      .sidebar #start-btn {
+        grid-column: 1 / -1;
+      }
+
+      .touch-controls {
+        display: flex;
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 <body>
   <div class="game-wrapper">
-    <div class="panel">
+    <div class="panel main-panel">
       <h1>테트리스</h1>
       <div class="canvas-container">
         <canvas id="board" width="300" height="600"></canvas>
@@ -149,6 +276,21 @@
           <h2 id="overlay-title">게임 오버</h2>
           <p id="overlay-score">점수: 0</p>
           <button id="restart-btn">다시 시작</button>
+        </div>
+      </div>
+
+      <div class="touch-controls" id="touch-controls">
+        <div class="touch-row">
+          <button type="button" class="touch-btn" data-action="left" aria-label="왼쪽">←</button>
+          <button type="button" class="touch-btn" data-action="rotate" aria-label="회전">↻</button>
+          <button type="button" class="touch-btn" data-action="right" aria-label="오른쪽">→</button>
+        </div>
+        <div class="touch-row">
+          <button type="button" class="touch-btn wide" data-action="soft-drop" aria-label="아래">↓ 내리기</button>
+          <button type="button" class="touch-btn wide primary" data-action="hard-drop" aria-label="즉시 낙하">⬇ 즉시</button>
+        </div>
+        <div class="touch-row">
+          <button type="button" class="touch-btn wide" data-action="pause" aria-label="일시정지">⏸ 일시정지</button>
         </div>
       </div>
     </div>
@@ -166,18 +308,18 @@
         <label>줄</label>
         <span id="lines">0</span>
       </div>
-      <div class="panel">
+      <div class="panel next-panel">
         <label style="display:block;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:#aaa;margin-bottom:8px;">다음 블록</label>
         <canvas id="next-canvas" width="140" height="100"></canvas>
       </div>
-      <div class="panel controls">
+      <div class="panel controls keyboard-hint">
         <kbd>←</kbd> <kbd>→</kbd> 이동<br>
         <kbd>↑</kbd> 회전<br>
         <kbd>↓</kbd> 소프트 드롭<br>
         <kbd>Space</kbd> 하드 드롭<br>
         <kbd>P</kbd> 일시정지
       </div>
-      <button id="start-btn">시작</button>
+      <button id="start-btn" type="button">시작</button>
     </div>
   </div>
 
@@ -221,6 +363,7 @@
     const overlayScore = document.getElementById('overlay-score');
     const startBtn = document.getElementById('start-btn');
     const restartBtn = document.getElementById('restart-btn');
+    const touchControls = document.getElementById('touch-controls');
 
     let board, piece, nextPiece, score, lines, level, dropInterval, lastDrop, paused, gameOver, running;
 
@@ -504,6 +647,34 @@
       }
     }
 
+    function handleAction(action) {
+      if (gameOver) return;
+
+      switch (action) {
+        case 'left':
+          if (!paused && running) move(-1);
+          break;
+        case 'right':
+          if (!paused && running) move(1);
+          break;
+        case 'rotate':
+          if (!paused && running) rotate();
+          break;
+        case 'soft-drop':
+          if (!paused && running) softDrop();
+          break;
+        case 'hard-drop':
+          if (!paused && running) hardDrop();
+          break;
+        case 'pause':
+          if (running) togglePause();
+          else startGame();
+          break;
+      }
+
+      if (!paused && running) drawBoard();
+    }
+
     document.addEventListener('keydown', (e) => {
       if (gameOver) return;
       if (!running && e.key !== 'Enter') return;
@@ -511,30 +682,29 @@
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault();
-          if (!paused) move(-1);
+          handleAction('left');
           break;
         case 'ArrowRight':
           e.preventDefault();
-          if (!paused) move(1);
+          handleAction('right');
           break;
         case 'ArrowDown':
           e.preventDefault();
-          if (!paused) softDrop();
+          handleAction('soft-drop');
           break;
         case 'ArrowUp':
           e.preventDefault();
-          if (!paused) rotate();
+          handleAction('rotate');
           break;
         case ' ':
           e.preventDefault();
-          if (!paused) hardDrop();
+          handleAction('hard-drop');
           break;
         case 'p':
         case 'P':
-          togglePause();
+          handleAction('pause');
           break;
       }
-      if (!paused) drawBoard();
     });
 
     startBtn.addEventListener('click', () => {
@@ -543,6 +713,22 @@
     });
 
     restartBtn.addEventListener('click', startGame);
+
+    touchControls.querySelectorAll('[data-action]').forEach((btn) => {
+      const action = btn.dataset.action;
+      const onPress = (e) => {
+        e.preventDefault();
+        handleAction(action);
+      };
+      btn.addEventListener('touchstart', onPress, { passive: false });
+      btn.addEventListener('click', onPress);
+    });
+
+    document.addEventListener('touchmove', (e) => {
+      if (e.target.closest('.touch-controls, #start-btn, #restart-btn')) {
+        e.preventDefault();
+      }
+    }, { passive: false });
 
     drawBoard();
     drawNext();
